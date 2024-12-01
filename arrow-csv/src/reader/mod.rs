@@ -1476,6 +1476,26 @@ mod tests {
     }
 
     #[test]
+    fn test_csv_with_nullable_dictionary() {
+        let dictionary_type =
+            DataType::Dictionary(Box::new(DataType::UInt8), Box::new(DataType::Utf8));
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("id", DataType::Utf8, false),
+            Field::new("name", dictionary_type.clone(), true),
+        ]));
+        let file = File::open("test/data/dictionary_nullable_test.csv").unwrap();
+
+        let mut csv = ReaderBuilder::new(schema).build(file).unwrap();
+
+        let batch = csv.next().unwrap().unwrap();
+        assert_eq!(3, batch.num_rows());
+        assert_eq!(2, batch.num_columns());
+
+        let names = arrow_cast::cast(batch.column(1), &dictionary_type).unwrap();
+        assert!(!names.is_null(2));
+        assert!(names.is_null(1));
+    }
+    #[test]
     fn test_nulls() {
         let schema = Arc::new(Schema::new(vec![
             Field::new("c_int", DataType::UInt64, false),
